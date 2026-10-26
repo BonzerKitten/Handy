@@ -258,9 +258,10 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
   const TITLES = { rule: 'Rule of 3', ratio: 'Aspect ratio', color: 'Color' };
   const FIRST_INPUT = { rule: 'r3a', ratio: 'arW', color: 'c-hex' };
   const finePointer = matchMedia('(pointer: fine)').matches;
+  const HOME = root.dataset.tool; // shown again when Back returns to the URL without a hash
 
   function showTool(focus) {
-    const hash = location.hash.slice(1);
+    const hash = location.hash.slice(1) || HOME;
     if (Object.prototype.hasOwnProperty.call(TITLES, hash)) {
       root.dataset.tool = hash;
       try { localStorage.setItem('handy.tool', hash); } catch (e) {}
