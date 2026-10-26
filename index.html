@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0d0e11">
+<meta name="description" content="Small, fast tools: rule of three, aspect ratio, color conversion.">
+<title>Handy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2315171c'/%3E%3Cpath d='M10 8v16M22 8v16M10 16h12' stroke='%238ab4ff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+(function () {
+  var tools = ['rule', 'ratio', 'color'], t = location.hash.slice(1);
+  if (tools.indexOf(t) < 0) { try { t = localStorage.getItem('handy.tool'); } catch (e) {} }
+  if (tools.indexOf(t) < 0) t = 'rule';
+  document.documentElement.dataset.tool = t;
+})();
+</script>
+<style>
+:root {
+  --bg: #0d0e11;
+  --panel: #15171c;
+  --field: #1c1f25;
+  --line: #2a2e36;
+  --line2: #3a3f49;
+  --text: #e7e9ec;
+  --muted: #8a909b;
+  --faint: #4a505b;
+  --accent: #8ab4ff;
+  --accent-bg: #18212f;
+  --accent-line: #34496d;
+  --bad: #ff7b7b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+header.wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; padding-bottom: 20px; }
+.brand { font-size: 22px; font-weight: 750; letter-spacing: -.01em; color: var(--text); text-decoration: none; }
+.brand span { color: var(--accent); }
+nav { display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+nav a { padding: 10px 18px; border-radius: 10px; color: var(--muted); text-decoration: none; font-weight: 600; white-space: nowrap; touch-action: manipulation; }
+nav a:hover { color: var(--text); }
+[data-tool=rule] nav a[href="#rule"],
+[data-tool=ratio] nav a[href="#ratio"],
+[data-tool=color] nav a[href="#color"] { background: var(--field); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+
+.tool { display: none; padding-bottom: 48px; }
+[data-tool=rule] #t-rule,
+[data-tool=ratio] #t-ratio,
+[data-tool=color] #t-color { display: block; }
+
+h1 { font-size: 32px; line-height: 1.15; margin: 12px 0 6px; letter-spacing: -.015em; }
+h2 { font-size: 19px; margin: 0 0 18px; }
+.hint { color: var(--muted); margin: 0 0 24px; font-size: 17px; }
+.hint b { color: var(--text); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px; }
+.card + .card { margin-top: 20px; }
+.lbl { display: block; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+.num {
+  display: block; width: 100%; min-width: 0; height: 76px; padding: 0 20px;
+  font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--field); border: 1px solid var(--line); border-radius: 14px;
+}
+.num::placeholder, .txt::placeholder { color: var(--faint); font-weight: 500; }
+input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.bad, .bad:focus { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+.out { display: flex; align-items: center; overflow-x: auto; white-space: nowrap; background: var(--accent-bg); border-color: var(--accent-line); color: #fff; }
+.sep { align-self: end; height: 76px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 28px; }
+
+.btn { height: 48px; padding: 0 20px; border-radius: 12px; border: 1px solid var(--line2); background: var(--field); font-weight: 600; }
+.btn:hover { border-color: var(--faint); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.btn:disabled { opacity: .4; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.note { margin: 14px 0 0; min-height: 1.45em; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* Rule of three */
+.grid3 { display: grid; grid-template-columns: 1fr 48px 1fr; gap: 20px 12px; }
+
+/* Aspect ratio */
+.grid4 { display: grid; grid-template-columns: 1fr 48px 1fr auto; gap: 12px; }
+.grid4 .btn { align-self: end; height: 76px; width: 64px; padding: 0; font-size: 22px; }
+.big { margin: 26px 0 4px; font-size: 56px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sub { color: var(--muted); font-size: 17px; }
+.sub b { color: var(--text); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.chip { height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid var(--line2); background: var(--field); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--faint); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.gap { height: 20px; }
+.sizes-head { margin: 26px 0 10px; }
+.sizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.size { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); }
+.size:hover { border-color: var(--line2); }
+.size b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+.size small { display: block; color: var(--muted); font-size: 13px; min-height: 1.45em; }
+
+/* Color */
+.color { display: grid; grid-template-columns: 300px 1fr; gap: 28px; }
+.swatch {
+  position: relative; display: flex; align-items: flex-end; min-height: 316px; padding: 18px;
+  border-radius: 14px; border: 1px solid var(--line2); font-size: 22px; font-weight: 700; cursor: pointer;
+}
+.swatch input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.crow { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; align-items: center; }
+.crow + .crow { margin-top: 12px; }
+.crow label { font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.txt {
+  width: 100%; min-width: 0; height: 52px; padding: 0 14px; font-size: 19px; font-variant-numeric: tabular-nums;
+  background: var(--field); border: 1px solid var(--line); border-radius: 12px;
+}
+.crow .btn { height: 52px; padding: 0 16px; }
+
+@media (max-width: 720px) {
+  .color { grid-template-columns: 1fr; gap: 18px; }
+  .swatch { min-height: 140px; }
+}
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  header.wrap { padding-top: 12px; padding-bottom: 12px; }
+  .brand { display: none; }
+  nav { flex: 1; }
+  nav a { flex: 1; padding: 10px 4px; text-align: center; }
+  h1 { font-size: 26px; margin-top: 4px; }
+  .hint { font-size: 16px; margin-bottom: 16px; }
+  .card { padding: 16px; border-radius: 16px; }
+  .card + .card { margin-top: 14px; }
+  .num { height: 60px; padding: 0 14px; font-size: 24px; }
+  .sep { height: 60px; font-size: 22px; }
+  .grid3 { grid-template-columns: 1fr 26px 1fr; gap: 14px 6px; }
+  .grid4 { grid-template-columns: 1fr 26px 1fr auto; gap: 6px; }
+  .grid4 .btn { height: 60px; width: 52px; }
+  .big { font-size: 44px; margin-top: 20px; }
+  .sizes { grid-template-columns: 1fr 1fr; }
+  .crow { grid-template-columns: 62px 1fr auto; gap: 8px; }
+  .txt { font-size: 17px; padding: 0 12px; }
+  .crow .btn { padding: 0 12px; }
+}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <a class="brand" href="#rule">Handy<span>.</span></a>
+  <nav>
+    <a href="#rule">Rule of 3</a>
+    <a href="#ratio">Aspect ratio</a>
+    <a href="#color">Color</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="tool" id="t-rule">
+    <h1>Rule of three</h1>
+    <p class="hint">If <b>A</b> is to <b>B</b>, then <b>C</b> is to <b>X</b>.</p>
+    <div class="card">
+      <div class="grid3">
+        <label><span class="lbl">A</span><input class="num" id="r3a" inputmode="decimal" enterkeyhint="next" autocomplete="off" placeholder="10"></label>
+        <span class="sep">→</span>
+        <label><span class="lbl">B</span><input class="num" id="r3b" inputmode="decimal" enterkeyhint="next" autocomplete="off" placeholder="25"></label>
+        <label><span class="lbl">C</span><input class="num" id="r3c" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="4"></label>
+        <span class="sep">→</span>
+        <div><span class="lbl">X</span><output class="num out" id="r3x" aria-live="polite">–</output></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="r3copy" disabled>Copy X</button>
+        <button type="button" class="btn" id="r3clear">Clear</button>
+      </div>
+      <p class="note" id="r3note">X = B × C ÷ A</p>
+    </div>
+  </section>
+
+  <section class="tool" id="t-ratio">
+    <h1>Aspect ratio</h1>
+    <p class="hint">Get the ratio of a resolution, or a resolution from a ratio.</p>
+
+    <div class="card">
+      <h2>Resolution → ratio</h2>
+      <div class="grid3">
+        <label><span class="lbl">Width</span><input class="num" id="arW" inputmode="decimal" enterkeyhint="next" autocomplete="off" placeholder="1920"></label>
+        <span class="sep">×</span>
+        <label><span class="lbl">Height</span><input class="num" id="arH" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="1080"></label>
+      </div>
+      <div class="big" id="arOut" aria-live="polite">–</div>
+      <div class="sub" id="arSub">&nbsp;</div>
+    </div>
+
+    <div class="card">
+      <h2>Ratio → resolution</h2>
+      <div class="chips" id="presets">
+        <button type="button" class="chip" data-r="16:9">16:9</button>
+        <button type="button" class="chip" data-r="4:3">4:3</button>
+        <button type="button" class="chip" data-r="16:10">16:10</button>
+        <button type="button" class="chip" data-r="21:9">21:9</button>
+        <button type="button" class="chip" data-r="3:2">3:2</button>
+        <button type="button" class="chip" data-r="1:1">1:1</button>
+        <button type="button" class="chip" data-r="9:16">9:16</button>
+        <button type="button" class="chip" data-r="4:5">4:5</button>
+      </div>
+      <div class="grid4">
+        <label><span class="lbl">Ratio</span><input class="num" id="rw" inputmode="decimal" autocomplete="off" value="16"></label>
+        <span class="sep">:</span>
+        <label><span class="lbl">&nbsp;</span><input class="num" id="rh" inputmode="decimal" autocomplete="off" value="9" aria-label="Ratio height"></label>
+        <button type="button" class="btn" id="rswap" title="Swap" aria-label="Swap ratio">⇄</button>
+      </div>
+      <div class="gap"></div>
+      <div class="grid3">
+        <label><span class="lbl">Width</span><input class="num" id="gw" inputmode="decimal" autocomplete="off" placeholder="1920"></label>
+        <span class="sep">×</span>
+        <label><span class="lbl">Height</span><input class="num" id="gh" inputmode="decimal" autocomplete="off" placeholder="1080"></label>
+      </div>
+      <p class="note" id="gnote">Type a width or a height. The other one is calculated.</p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="gcopy" disabled>Copy</button>
+      </div>
+      <div class="lbl sizes-head">Common sizes</div>
+      <div class="sizes" id="sizes"></div>
+    </div>
+  </section>
+
+  <section class="tool" id="t-color">
+    <h1>Color</h1>
+    <p class="hint">Type in any field, or tap the swatch to pick a color.</p>
+    <div class="card color">
+      <label class="swatch" id="swatch"><span id="swatchHex"></span><input type="color" id="picker" aria-label="Pick a color"></label>
+      <div>
+        <div class="crow"><label for="c-hex">HEX</label><input class="txt" id="c-hex" spellcheck="false" autocomplete="off" autocapitalize="off"><button type="button" class="btn" data-copy="c-hex">Copy</button></div>
+        <div class="crow"><label for="c-rgb">RGB</label><input class="txt" id="c-rgb" spellcheck="false" autocomplete="off"><button type="button" class="btn" data-copy="c-rgb">Copy</button></div>
+        <div class="crow"><label for="c-rgb1">RGB 0–1</label><input class="txt" id="c-rgb1" spellcheck="false" autocomplete="off"><button type="button" class="btn" data-copy="c-rgb1">Copy</button></div>
+        <div class="crow"><label for="c-hsv">HSV</label><input class="txt" id="c-hsv" spellcheck="false" autocomplete="off"><button type="button" class="btn" data-copy="c-hsv">Copy</button></div>
+        <div class="crow"><label for="c-hsl">HSL</label><input class="txt" id="c-hsl" spellcheck="false" autocomplete="off"><button type="button" class="btn" data-copy="c-hsl">Copy</button></div>
+        <div class="crow"><label for="c-cmyk">CMYK</label><input class="txt" id="c-cmyk" spellcheck="false" autocomplete="off"><button type="button" class="btn" data-copy="c-cmyk">Copy</button></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const root = document.documentElement;
+
+  // ---------- Navigation ----------
+  const TITLES = { rule: 'Rule of 3', ratio: 'Aspect ratio', color: 'Color' };
+  const FIRST_INPUT = { rule: 'r3a', ratio: 'arW', color: 'c-hex' };
+  const finePointer = matchMedia('(pointer: fine)').matches;
+
+  function showTool(focus) {
+    const hash = location.hash.slice(1);
+    if (hash in TITLES) {
+      root.dataset.tool = hash;
+      try { localStorage.setItem('handy.tool', hash); } catch (e) {}
+    }
+    const tool = root.dataset.tool;
+    document.title = TITLES[tool] + ' · Handy';
+    if (focus && finePointer) $(FIRST_INPUT[tool]).focus();
+  }
+  addEventListener('hashchange', () => showTool(true));
+  showTool(true);
+
+  // ---------- Helpers ----------
+  // Accepts "1.5", "1,5", "1.234,5" and "1,234.5".
+  function parseNum(raw) {
+    let s = raw.replace(/\s/g, '');
+    if (!s) return NaN;
+    const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.');
+    if (comma > -1 && dot > -1) {
+      s = comma > dot ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+    } else if (comma > -1) {
+      s = s.split(',').length > 2 ? s.replace(/,/g, '') : s.replace(',', '.');
+    } else if (s.split('.').length > 2) {
+      s = s.replace(/\./g, '');
+    }
+    return /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(s) ? Number(s) : NaN;
+  }
+
+  function fmt(n, useComma) {
+    let s = String(Number(n.toPrecision(10)));
+    if (s === '-0') s = '0';
+    return useComma ? s.replace('.', ',') : s;
+  }
+
+  // Marks a field red when it has text that is not a number. Returns the number or NaN.
+  function readNum(input) {
+    const n = parseNum(input.value);
+    input.classList.toggle('bad', input.value.trim() !== '' && isNaN(n));
+    return n;
+  }
+
+  async function copy(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+    btn.textContent = 'Copied';
+    clearTimeout(btn.copyTimer);
+    btn.copyTimer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1200);
+  }
+
+  // Enter moves to the next field, like Tab.
+  function chainEnter(ids) {
+    ids.forEach((id, i) => $(id).addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (ids[i + 1]) $(ids[i + 1]).focus(); else e.target.blur();
+    }));
+  }
+
+  // ---------- Rule of three ----------
+  const r3 = ['r3a', 'r3b', 'r3c'].map($);
+  const r3x = $('r3x'), r3note = $('r3note'), r3copy = $('r3copy');
+  let r3result = '';
+
+  function calcRule() {
+    const [a, b, c] = r3.map(readNum);
+    const comma = r3.some(i => i.value.includes(','));
+    r3result = '';
+    if ([a, b, c].some(isNaN)) {
+      r3note.textContent = 'X = B × C ÷ A';
+    } else if (a === 0) {
+      r3note.textContent = 'A can’t be 0.';
+    } else {
+      r3result = fmt(b * c / a, comma);
+      r3note.textContent = `X = ${fmt(b, comma)} × ${fmt(c, comma)} ÷ ${fmt(a, comma)} = ${r3result}`;
+    }
+    r3x.textContent = r3result || '–';
+    r3copy.disabled = !r3result;
+  }
+  r3.forEach(i => i.addEventListener('input', calcRule));
+  r3copy.addEventListener('click', () => copy(r3result, r3copy));
+  $('r3clear').addEventListener('click', () => {
+    r3.forEach(i => { i.value = ''; });
+    calcRule();
+    r3[0].focus();
+  });
+  chainEnter(['r3a', 'r3b', 'r3c']);
+
+  // ---------- Aspect ratio ----------
+  const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+
+  // Smallest whole-number ratio, also for decimals like 2.39 × 1 → 239:100.
+  function reduce(w, h) {
+    let k = 1;
+    const whole = x => Math.abs(x * k - Math.round(x * k)) < 1e-9;
+    while (!(whole(w) && whole(h)) && k < 1e6) k *= 10;
+    const a = Math.round(w * k), b = Math.round(h * k), d = gcd(a, b);
+    return [a / d, b / d];
+  }
+
+  const COMMON = [[1, 1], [5, 4], [4, 3], [3, 2], [16, 10], [16, 9], [2, 1], [21, 9], [32, 9]];
+
+  // Nearest well-known ratio, written in the same orientation as w × h.
+  function closestCommon(w, h) {
+    const landscape = w >= h, r = landscape ? w / h : h / w;
+    let best = COMMON[0], bestDiff = Infinity;
+    for (const c of COMMON) {
+      const diff = Math.abs(Math.log(r / (c[0] / c[1])));
+      if (diff < bestDiff) { bestDiff = diff; best = c; }
+    }
+    const name = landscape ? `${best[0]}:${best[1]}` : `${best[1]}:${best[0]}`;
+    return { name, diff: bestDiff };
+  }
+
+  const arW = $('arW'), arH = $('arH'), arOut = $('arOut'), arSub = $('arSub');
+
+  function calcRatio() {
+    const w = readNum(arW), h = readNum(arH);
+    if (!(w > 0 && h > 0)) {
+      arOut.textContent = '–';
+      arSub.innerHTML = '&nbsp;';
+      return;
+    }
+    const [a, b] = reduce(w, h);
+    const name = `${a}:${b}`;
+    const decimal = w >= h ? `${fmt(+(w / h).toFixed(3))} : 1` : `1 : ${fmt(+(h / w).toFixed(3))}`;
+    const parts = [decimal, w === h ? 'Square' : w > h ? 'Landscape' : 'Portrait'];
+    const common = closestCommon(w, h);
+    if (common.name !== name) {
+      if (common.diff < 1e-9) parts.push(`Same as <b>${common.name}</b>`);
+      else if (common.diff < 0.03) parts.push(`Close to <b>${common.name}</b>`);
+    }
+    arOut.textContent = name;
+    arSub.innerHTML = parts.join(' · ');
+  }
+  [arW, arH].forEach(i => i.addEventListener('input', calcRatio));
+  chainEnter(['arW', 'arH']);
+
+  // Known resolutions, keyed by reduced ratio. Ultrawide "21:9" monitors are not exactly 21:9.
+  const STANDARD = {
+    '16:9': [[1280, 720, 'HD 720p'], [1920, 1080, 'Full HD 1080p'], [2560, 1440, 'QHD 1440p'], [3840, 2160, '4K UHD'], [5120, 2880, '5K'], [7680, 4320, '8K']],
+    '4:3': [[640, 480, 'VGA'], [800, 600, 'SVGA'], [1024, 768, 'XGA'], [1600, 1200, 'UXGA'], [2048, 1536, 'QXGA']],
+    '8:5': [[1280, 800, 'WXGA'], [1440, 900, 'WXGA+'], [1680, 1050, 'WSXGA+'], [1920, 1200, 'WUXGA'], [2560, 1600, 'WQXGA'], [3840, 2400, 'WQUXGA']],
+    '7:3': [[2560, 1080, 'Ultrawide FHD'], [3440, 1440, 'Ultrawide QHD'], [3840, 1600, 'Ultrawide QHD+'], [5120, 2160, 'Ultrawide 5K']],
+    '3:2': [[1080, 720, ''], [1620, 1080, ''], [2160, 1440, ''], [3000, 2000, ''], [6000, 4000, '24 MP photo']],
+    '1:1': [[512, 512, ''], [1024, 1024, ''], [1080, 1080, 'Square post'], [2048, 2048, '']],
+    '9:16': [[720, 1280, 'HD vertical'], [1080, 1920, 'Full HD vertical'], [1440, 2560, 'QHD vertical'], [2160, 3840, '4K vertical']],
+    '4:5': [[864, 1080, ''], [1080, 1350, 'Portrait post'], [1440, 1800, ''], [2160, 2700, '']],
+    '5:4': [[1280, 1024, 'SXGA'], [1350, 1080, ''], [2560, 2048, 'QSXGA']],
+  };
+
+  const rw = $('rw'), rh = $('rh'), gw = $('gw'), gh = $('gh');
+  const gnote = $('gnote'), gcopy = $('gcopy'), sizes = $('sizes');
+  const presetButtons = [...$('presets').children];
+  const GNOTE_DEFAULT = gnote.textContent;
+  let driver = 'w'; // the field the user typed in last; the other one is calculated
+
+  function currentRatio() {
+    const a = readNum(rw), b = readNum(rh);
+    return a > 0 && b > 0 ? [a, b] : null;
+  }
+
+  function solve() {
+    const r = currentRatio();
+    const src = driver === 'w' ? gw : gh, dst = driver === 'w' ? gh : gw;
+    const v = readNum(src);
+    gnote.textContent = GNOTE_DEFAULT;
+    if (r && src.value.trim() === '') {
+      dst.value = '';
+    } else if (r && v > 0) {
+      const exact = driver === 'w' ? v * r[1] / r[0] : v * r[0] / r[1];
+      const rounded = Math.round(exact);
+      dst.value = String(rounded);
+      dst.classList.remove('bad');
+      gnote.textContent = Math.abs(exact - rounded) > 1e-6
+        ? `${driver === 'w' ? 'Height' : 'Width'} rounded from ${fmt(+exact.toFixed(2))}.`
+        : GNOTE_DEFAULT;
+    }
+    updateCopy();
+  }
+
+  function updateCopy() {
+    const w = parseNum(gw.value), h = parseNum(gh.value);
+    gcopy.disabled = !(w > 0 && h > 0);
+  }
+
+  function renderSizes() {
+    const r = currentRatio();
+    sizes.textContent = '';
+    if (!r) return;
+    const [a, b] = reduce(r[0], r[1]);
+    const key = `${a}:${b}`;
+    presetButtons.forEach(btn => {
+      const [pa, pb] = btn.dataset.r.split(':').map(Number);
+      const [x, y] = reduce(pa, pb);
+      btn.classList.toggle('on', `${x}:${y}` === key);
+    });
+    let list = STANDARD[key];
+    if (!list) {
+      // No known list: use common heights (or widths, for portrait) and calculate the other side.
+      const steps = [480, 720, 1080, 1440, 2160];
+      list = r[0] >= r[1]
+        ? steps.map(h => [Math.round(h * r[0] / r[1]), h, ''])
+        : steps.map(w => [w, Math.round(w * r[1] / r[0]), '']);
+    }
+    for (const [w, h, label] of list) {
+      const exact = Math.abs(w / h - r[0] / r[1]) < 1e-9;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'size';
+      btn.innerHTML = `<b>${w} × ${h}</b><small>${[label, exact ? '' : '≈ not exact'].filter(Boolean).join(' · ')}</small>`;
+      btn.addEventListener('click', () => {
+        gw.value = w;
+        gh.value = h;
+        gw.classList.remove('bad');
+        gh.classList.remove('bad');
+        gnote.textContent = GNOTE_DEFAULT;
+        updateCopy();
+      });
+      sizes.append(btn);
+    }
+  }
+
+  function ratioChanged() { solve(); renderSizes(); }
+
+  [rw, rh].forEach(i => i.addEventListener('input', ratioChanged));
+  gw.addEventListener('input', () => { driver = 'w'; solve(); });
+  gh.addEventListener('input', () => { driver = 'h'; solve(); });
+  $('rswap').addEventListener('click', () => {
+    [rw.value, rh.value] = [rh.value, rw.value];
+    ratioChanged();
+  });
+  presetButtons.forEach(btn => btn.addEventListener('click', () => {
+    [rw.value, rh.value] = btn.dataset.r.split(':');
+    ratioChanged();
+  }));
+  gcopy.addEventListener('click', () => copy(`${parseNum(gw.value)}x${parseNum(gh.value)}`, gcopy));
+  chainEnter(['rw', 'rh']);
+  chainEnter(['gw']);
+  chainEnter(['gh']);
+  renderSizes();
+
+  // ---------- Color ----------
+  // Color is kept as r, g, b in 0..1 so edits in HSV/HSL don't lose precision.
+  const clamp01 = x => Math.min(1, Math.max(0, x));
+  const wrapHue = h => ((h % 360) + 360) % 360;
+  const nums = s => (s.match(/-?\d*\.?\d+/g) || []).map(Number);
+  const inRange = (list, count, max) => list.length === count && list.every(n => n >= 0 && n <= max);
+
+  function hue(r, g, b, max, d) {
+    if (!d) return 0;
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return wrapHue(h * 60);
+  }
+  function rgbToHsv([r, g, b]) {
+    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    return [hue(r, g, b, max, d), max ? d / max : 0, max];
+  }
+  function hsvToRgb(h, s, v) {
+    const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+    return [f(5), f(3), f(1)];
+  }
+  function rgbToHsl([r, g, b]) {
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, l = (max + min) / 2;
+    return [hue(r, g, b, max, d), d ? d / (1 - Math.abs(2 * l - 1)) : 0, l];
+  }
+  function hslToRgb(h, s, l) {
+    const a = s * Math.min(l, 1 - l);
+    const f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    return [f(0), f(8), f(4)];
+  }
+  function rgbToCmyk([r, g, b]) {
+    const k = 1 - Math.max(r, g, b);
+    if (k >= 1) return [0, 0, 0, 1];
+    return [(1 - r - k) / (1 - k), (1 - g - k) / (1 - k), (1 - b - k) / (1 - k), k];
+  }
+
+  const to255 = x => Math.round(clamp01(x) * 255);
+  const pct = x => Math.round(clamp01(x) * 100);
+  const deg = h => Math.round(h) % 360;
+  const toHex = rgb => '#' + rgb.map(x => to255(x).toString(16).padStart(2, '0')).join('').toUpperCase();
+
+  const FORMATS = {
+    hex: {
+      show: toHex,
+      parse(s) {
+        let m = s.trim().replace(/^#/, '');
+        if (/^[0-9a-f]{3}$/i.test(m)) m = m.replace(/./g, '$&$&');
+        if (!/^[0-9a-f]{6}$/i.test(m)) return null;
+        return [0, 2, 4].map(i => parseInt(m.slice(i, i + 2), 16) / 255);
+      },
+    },
+    rgb: {
+      show: rgb => rgb.map(to255).join(', '),
+      parse(s) { const n = nums(s); return inRange(n, 3, 255) ? n.map(x => x / 255) : null; },
+    },
+    rgb1: {
+      show: rgb => rgb.map(x => clamp01(x).toFixed(3)).join(', '),
+      parse(s) { const n = nums(s); return inRange(n, 3, 1) ? n : null; },
+    },
+    hsv: {
+      show(rgb) { const [h, s, v] = rgbToHsv(rgb); return `${deg(h)}°, ${pct(s)}%, ${pct(v)}%`; },
+      parse(s) {
+        const n = nums(s);
+        if (n.length !== 3 || !inRange(n.slice(1), 2, 100)) return null;
+        return hsvToRgb(wrapHue(n[0]), n[1] / 100, n[2] / 100);
+      },
+    },
+    hsl: {
+      show(rgb) { const [h, s, l] = rgbToHsl(rgb); return `${deg(h)}°, ${pct(s)}%, ${pct(l)}%`; },
+      parse(s) {
+        const n = nums(s);
+        if (n.length !== 3 || !inRange(n.slice(1), 2, 100)) return null;
+        return hslToRgb(wrapHue(n[0]), n[1] / 100, n[2] / 100);
+      },
+    },
+    cmyk: {
+      show: rgb => rgbToCmyk(rgb).map(x => pct(x) + '%').join(', '),
+      parse(s) {
+        const n = nums(s);
+        if (!inRange(n, 4, 100)) return null;
+        const k = n[3] / 100;
+        return n.slice(0, 3).map(x => (1 - x / 100) * (1 - k));
+      },
+    },
+  };
+
+  const colorInputs = Object.keys(FORMATS).map(id => ({ id, fmt: FORMATS[id], input: $('c-' + id) }));
+  const swatch = $('swatch'), swatchHex = $('swatchHex'), picker = $('picker');
+  let color = FORMATS.hex.parse('#4F8CFF');
+
+  function luminance(rgb) {
+    const lin = rgb.map(x => { x = clamp01(x); return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+
+  function renderColor(skip) {
+    for (const f of colorInputs) {
+      if (f.input === skip) continue;
+      f.input.value = f.fmt.show(color);
+      f.input.classList.remove('bad');
+    }
+    const hex = toHex(color);
+    swatch.style.background = hex;
+    swatch.style.color = luminance(color) > 0.179 ? '#000' : '#fff';
+    swatchHex.textContent = hex;
+    picker.value = hex.toLowerCase();
+  }
+
+  for (const f of colorInputs) {
+    f.input.addEventListener('input', () => {
+      const parsed = f.fmt.parse(f.input.value);
+      f.input.classList.toggle('bad', !parsed);
+      if (parsed) { color = parsed; renderColor(f.input); }
+    });
+    // Tidy the field's text once the user leaves it.
+    f.input.addEventListener('blur', () => {
+      f.input.value = f.fmt.show(color);
+      f.input.classList.remove('bad');
+    });
+    f.input.addEventListener('keydown', e => { if (e.key === 'Enter') f.input.blur(); });
+  }
+  picker.addEventListener('input', () => {
+    color = FORMATS.hex.parse(picker.value);
+    renderColor(null);
+  });
+  document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', () => {
+    copy($(btn.dataset.copy).value, btn);
+  }));
+  renderColor(null);
+})();
+</script>
+</body>
+</html>
