@@ -217,9 +217,9 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
       </div>
       <div class="gap"></div>
       <div class="grid3">
-        <label><span class="lbl">Width</span><input class="num" id="gw" inputmode="decimal" autocomplete="off" placeholder="1920"></label>
+        <label><span class="lbl">Width</span><input class="num" id="gw" inputmode="numeric" autocomplete="off" placeholder="1920"></label>
         <span class="sep">×</span>
-        <label><span class="lbl">Height</span><input class="num" id="gh" inputmode="decimal" autocomplete="off" placeholder="1080"></label>
+        <label><span class="lbl">Height</span><input class="num" id="gh" inputmode="numeric" autocomplete="off" placeholder="1080"></label>
       </div>
       <p class="note" id="gnote">Type a width or a height. The other one is calculated.</p>
       <div class="actions">
@@ -295,11 +295,37 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
   }
 
   // Marks a field red when it has text that is not a number. Returns the number or NaN.
+  // A lone "-" or "." is a number still being typed, so it is not marked.
   function readNum(input) {
     const n = parseNum(input.value);
-    input.classList.toggle('bad', input.value.trim() !== '' && isNaN(n));
+    input.classList.toggle('bad', isNaN(n) && !/^-?[.,]?$/.test(input.value.trim()));
     return n;
   }
+
+  // Removes characters a field doesn't accept, keeping the cursor where it was.
+  // Register it before the field's other input listeners so they see the cleaned value.
+  function restrict(input, clean) {
+    input.addEventListener('input', e => {
+      const v = input.value;
+      const pasted = e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop';
+      const c = clean(v, pasted);
+      if (c === v) return;
+      const pos = pasted ? c.length : clean(v.slice(0, input.selectionStart ?? v.length), false).length;
+      input.value = c;
+      input.setSelectionRange(pos, pos);
+    });
+  }
+
+  // Digits plus, optionally, one decimal separator (. or ,) and a leading minus.
+  // A pasted "1.234,5" keeps its last separator as the decimal one.
+  const numberOnly = ({ negative = false, decimal = true } = {}) => (v, pasted) => {
+    const sign = negative && v.trimStart().startsWith('-') ? '-' : '';
+    let s = v.replace(/[^\d.,]/g, '');
+    if (!decimal) return sign + s.replace(/[.,]/g, '');
+    const at = pasted ? s.search(/[.,][^.,]*$/) : s.search(/[.,]/);
+    if (at > -1) s = s.slice(0, at).replace(/[.,]/g, '') + s[at] + s.slice(at + 1).replace(/[.,]/g, '');
+    return sign + s;
+  };
 
   async function copy(text, btn) {
     try {
@@ -347,6 +373,7 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
     r3x.textContent = r3result || '–';
     r3copy.disabled = !r3result;
   }
+  r3.forEach(i => restrict(i, numberOnly({ negative: true })));
   r3.forEach(i => i.addEventListener('input', calcRule));
   r3copy.addEventListener('click', () => copy(r3result, r3copy));
   $('r3clear').addEventListener('click', () => {
@@ -403,6 +430,7 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
     arOut.textContent = name;
     arSub.innerHTML = parts.join(' · ');
   }
+  [arW, arH].forEach(i => restrict(i, numberOnly()));
   [arW, arH].forEach(i => i.addEventListener('input', calcRatio));
   chainEnter(['arW', 'arH']);
 
@@ -493,6 +521,8 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
 
   function ratioChanged() { solve(); renderSizes(); }
 
+  [rw, rh].forEach(i => restrict(i, numberOnly()));
+  [gw, gh].forEach(i => restrict(i, numberOnly({ decimal: false })));
   [rw, rh].forEach(i => i.addEventListener('input', ratioChanged));
   gw.addEventListener('input', () => { driver = 'w'; solve(); });
   gh.addEventListener('input', () => { driver = 'h'; solve(); });
@@ -617,7 +647,13 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
     picker.value = hex.toLowerCase();
   }
 
+  // HEX: an optional "#" and up to 6 hex digits. The rest: numbers, separators, % and °.
+  // Letters are dropped, so a pasted "rgb(255, 0, 0)" becomes "255, 0, 0".
+  const hexOnly = v => (v.trimStart().startsWith('#') ? '#' : '') + v.replace(/[^0-9a-f]/gi, '').slice(0, 6);
+  const colorNumbers = v => v.replace(/[^\d.,%°\s]/g, '');
+
   for (const f of colorInputs) {
+    restrict(f.input, f.id === 'hex' ? hexOnly : colorNumbers);
     f.input.addEventListener('input', () => {
       const parsed = f.fmt.parse(f.input.value);
       f.input.classList.toggle('bad', !parsed);
