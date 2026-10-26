@@ -522,7 +522,12 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
     }
   }
 
-  function ratioChanged() { solve(); renderSizes(); }
+  // Without a valid ratio the calculated side can't be trusted, so it is emptied.
+  function ratioChanged() {
+    if (!currentRatio()) (driver === 'w' ? gh : gw).value = '';
+    solve();
+    renderSizes();
+  }
 
   [rw, rh].forEach(i => restrict(i, numberOnly()));
   [gw, gh].forEach(i => restrict(i, numberOnly({ decimal: false })));
