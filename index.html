@@ -261,7 +261,7 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px 
 
   function showTool(focus) {
     const hash = location.hash.slice(1);
-    if (hash in TITLES) {
+    if (Object.prototype.hasOwnProperty.call(TITLES, hash)) {
       root.dataset.tool = hash;
       try { localStorage.setItem('handy.tool', hash); } catch (e) {}
     }
